@@ -104,6 +104,7 @@ class _SharedRadioInstance():
 
     def send_packet(self, data: List[int]) -> crazyradio._radio_ack:
         assert (self._opened)
+        print(f"channel:{self._channel},address:{self._address},datarate:{self._datarate}")
         self._cmd_queue.put((self._instance_id,
                              _RadioCommands.SEND_PACKET,
                              (self._channel,
@@ -187,6 +188,8 @@ class _SharedRadio(Thread):
                         self._radio = None
             elif command[1] == _RadioCommands.SEND_PACKET:
                 channel, address, datarate, data = command[2]
+                print("_SharedRadio:",end="")
+                print(self._radio)
                 self._radio.set_channel(channel)
                 self._radio.set_address(address)
                 self._radio.set_data_rate(datarate)
@@ -591,9 +594,12 @@ class _RadioDriverThread(threading.Thread):
 
             try:
                 if self._has_safelink:
+                    print("has_safelink")
                     ackStatus = self._send_packet_safe(self._radio, dataOut)
                 else:
+                    print("has_not_safelink")
                     ackStatus = self._radio.send_packet(dataOut)
+                    print(type(self._radio))    
             except Exception as e:
                 import traceback
 
