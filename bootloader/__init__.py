@@ -65,7 +65,6 @@ class Bootloader:
 
         The device is actually considered in firmware mode.
         """
-        print("Bootloader: bootloader init")
         self.clink = clink
         self.in_loader = False
 
@@ -89,19 +88,18 @@ class Bootloader:
         self._cload = Cloader(clink,
                               info_cb=None,
                               in_boot_cb=None)
-        
+        # print("bootloader init")
 
     def start_bootloader(self, warm_boot=False, cf=None):
-        print("Bootloader: start_bootloader")
-        self.warm_booted = warm_boot
+        self.warm_booted = warm_boot # 这里是热启动
 
         if warm_boot:
             if cf is not None and cf.link:
-                cf.close_link()
-            self._cload.open_bootloader_uri(self.clink)
-            started = self._cload.reset_to_bootloader(TargetTypes.NRF51)
+                cf.close_link() # 为何要关闭呢？
+            self._cload.open_bootloader_uri(self.clink) # 用clink打开吗
+            started = self._cload.reset_to_bootloader(TargetTypes.NRF51) # 让其进入bootloader模式
             if started:
-                started = self._cload.check_link_and_get_info()
+                started = self._cload.check_link_and_get_info() # 进入了，则get info
         else:
             if not self._cload.link:
                 uri = self._cload.scan_for_bootloader()
@@ -124,32 +122,24 @@ class Bootloader:
                 # Nothing more to do
                 pass
             elif self.protocol_version == BootVersion.CF2_PROTO_VER:
-                # self._cload.request_info_update(TargetTypes.NRF51)
-                self._cload.request_info_update_nrf(TargetTypes.NRF51)
-                print("request_info_update_nrf51 end")
+                self._cload.request_info_update(TargetTypes.NRF51)
             else:
                 print('Bootloader protocol 0x{:X} not '
                       'supported!'.format(self.protocol_version))
 
-        print("Bootloader: start_bootloader end")
         return started
 
     def get_target(self, target_id):
-        print("Bootloader: get_target")
         return self._cload.request_info_update(target_id)
 
     def flash(self, filename: str, targets: List[Target], cf=None, enable_console_log: Optional[bool] = False):
         # Separate flash targets from decks
-        print("Bootloader: flash start")
-        print("flash_targets:",end='')
-        print(targets)
-        platform = self._get_platform_id()
+        platform = self._get_platform_id() # 判断是cf1还是cf2
         flash_targets = [t for t in targets if t.platform == platform]
         deck_targets = [t for t in targets if t.platform == 'deck']
 
-
         # Fetch artifacts from source file
-        artifacts = self._get_flash_artifacts_from_zip(filename)
+        artifacts = self._get_flash_artifacts_from_zip(filename) # 这个artifacts是什么？
         if len(artifacts) == 0:
             if len(targets) == 1:
                 content = open(filename, 'br').read()
@@ -159,9 +149,6 @@ class Bootloader:
 
         # Separate artifacts for flash and decks
         flash_artifacts = [a for a in artifacts if a.target.platform == platform]
-
-        print("flash_artifacts size:"+str(len(flash_artifacts))) # 通过打印得到这里长度len为1
-
         deck_artifacts = [a for a in artifacts if a.target.platform == 'deck']
 
         # Flash the MCU flash
@@ -206,7 +193,6 @@ class Bootloader:
                 int(100))
         else:
             print('')
-        print("Bootloader: flash end")
 
     def flash_full(self, cf: Optional[Crazyflie] = None,
                    filename: Optional[str] = None,
@@ -220,7 +206,6 @@ class Bootloader:
         Flash .zip or bin .file to list of targets.
         Reset to firmware when done.
         """
-        print("Bootloader: flash_full")
         if progress_cb is not None:
             self.progress_cb = progress_cb
         if terminate_flash_cb is not None:
@@ -233,28 +218,20 @@ class Bootloader:
             connected = (self.get_target(TargetTypes.STM32),)
             if self.protocol_version == BootVersion.CF2_PROTO_VER:
                 connected += (self.get_target(TargetTypes.NRF51),)
-            info_cb(self.protocol_version, connected)
+            info_cb(self.protocol_version, connected)   # info callback
 
         if filename is not None:
             self.flash(filename, targets, cf, enable_console_log=enable_console_log)
             self.reset_to_firmware()
 
     def _get_flash_artifacts_from_zip(self, filename):
-        print("Bootloader: _get_flash_artifacts_from_zip")
         if not zipfile.is_zipfile(filename):
-            print("----not zip file----")
             return []
 
         zf = zipfile.ZipFile(filename)
 
-        manifest = zf.read('manifest.json').decode('utf8') # 读取zip文件中manifest.json文件中的内容
+        manifest = zf.read('manifest.json').decode('utf8')
         manifest = json.loads(manifest)
-
-        # 调试
-        with open('D:\code\swarm_flash\test.json', 'w', encoding='utf-8') as file:
-            json.dump(manifest, file, ensure_ascii=False, indent=4)
-            print("-----------------")
-        # 调试
 
         if manifest['version'] != 1:
             raise Exception('Wrong manifest version')
@@ -264,19 +241,14 @@ class Bootloader:
             content = zf.read(file)
             target = Target(metadata['platform'], metadata['target'], metadata['type'])
             flash_artifacts.append(FlashArtifact(content, target))
-        
+
         return flash_artifacts
-    
 
     def _flash_flash(self, artifacts: List[FlashArtifact], targets: List[Target]):
-        print("Bootloader: _flash_flash")
-
         for (i, artifact) in enumerate(artifacts):
-            print("flash block number:"+str(i)) # 这里打印得到其实只执行一次
-            self._internal_flash_alt(artifact, i + 1, len(artifacts))
+            self._internal_flash(artifact, i + 1, len(artifacts))
 
     def reset_to_firmware(self) -> bool:
-        print("Bootloader: reset_to_firmware")
         status = False
         if self._cload.protocol_version == BootVersion.CF2_PROTO_VER:
             status = self._cload.reset_to_firmware(TargetTypes.NRF51)
@@ -289,23 +261,21 @@ class Bootloader:
         return status
 
     def close(self):
-        print("Bootloader: close")
         if self._cload:
             self._cload.close()
             self._cload.link = None
 
     def _internal_flash(self, artifact: FlashArtifact, current_file_number=1, total_files=1):
 
-        print("Bootloader: _internal_flash")
         target_info = self._cload.targets[TargetTypes.from_string(artifact.target.target)]
 
-        image = artifact.content    # 其实就是要烧录的内容
-        t_data = target_info    # 要烧录的无人机的信息
+        image = artifact.content
+        t_data = target_info
 
-        start_page = target_info.start_page # 起始页
+        start_page = target_info.start_page
 
         # If used from a UI we need some extra things for reporting progress
-        factor = (100.0 * t_data.page_size) / len(image)    # 从这里来看page_size是之前请求STM32数据然后得到的
+        factor = (100.0 * t_data.page_size) / len(image)
         progress = 0
 
         if self.progress_cb:
@@ -334,114 +304,9 @@ class Bootloader:
                 (len(image) - 1), int(len(image) / t_data.page_size) + 1)))
             sys.stdout.flush()
 
-        # For each page
-        need_pages = int((len(image) - 1) / t_data.page_size) + 1
-        
-        i = 0
-        ctr = 0 # 这一轮有多少页
-        while (i < need_pages) :
-            flag = True
-            ctr = 0
-            for i in range(3):
-                ctr = 0   # j用来记录每次将多少页放到buffer中
-                while ((ctr<t_data.buffer_pages) and i < need_pages):
-                    if self.terminate_flashing_cb and self.terminate_flashing_cb():
-                        raise Exception('Flashing terminated')
-
-                    # Load the buffer
-                    if ((i + 1) * t_data.page_size) > len(image):
-                        self._cload.upload_buffer_alt(
-                            t_data.addr, ctr, 0, image[i * t_data.page_size:])
-                    else:
-                        self._cload.upload_buffer_alt(
-                            t_data.addr, ctr, 0,
-                            image[i * t_data.page_size: (i + 1) * t_data.page_size])
-                    i += 1
-                    ctr += 1
-
-            if self.progress_cb:
-                progress += factor
-                self.progress_cb('Firmware ({}/{}) Uploading buffer to {}...'.format(
-                    current_file_number,
-                    total_files,
-                    TargetTypes.to_string(t_data.id)),
-
-                    int(progress))
-            else:
-                sys.stdout.write('.')
-                sys.stdout.flush()
-
-            if self.progress_cb:
-                self.progress_cb('Firmware ({}/{}) Writing buffer to {}...'.format(
-                current_file_number,
-                total_files,
-                TargetTypes.to_string(t_data.id)),
-                int(progress))
-            else:
-                sys.stdout.write('%d' % i)
-                sys.stdout.flush()
-            print('ctr'+str(ctr))
-            print('start_page:'+str(start_page),end=',')
-            print('i:'+str(i),end=',')
-            print("start page:"+str(start_page + i - (ctr - 1)))
-            if not self._cload.write_flash(t_data.addr, 0,
-                                               start_page + (i-1) - (ctr - 1),
-                                               ctr):
-                
-                if self.progress_cb:
-                    self.progress_cb(
-                        'Error during flash operation (code {})'.format(
-                            self._cload.error_code),
-                        int(progress))
-                else:
-                    print('\nError during flash operation (code %d). Maybe'
-                            ' wrong radio link?' % self._cload.error_code)
-                raise Exception()
-
-    def _internal_flash_alt(self, artifact: FlashArtifact, current_file_number=1, total_files=1):
-
-        print("Bootloader: _internal_flash_alt")
-        target_info = self._cload.targets[TargetTypes.from_string(artifact.target.target)]
-
-        image = artifact.content    # 其实就是要烧录的内容
-        t_data = target_info    # 要烧录的无人机的信息
-
-        start_page = target_info.start_page # 起始页
-
-        # If used from a UI we need some extra things for reporting progress
-        factor = (100.0 * t_data.page_size) / len(image)    # 从这里来看page_size是之前请求STM32数据然后得到的
-        progress = 0
-
-        if self.progress_cb:
-            self.progress_cb(
-                'Firmware ({}/{}) Starting...'.format(current_file_number, total_files),
-                int(progress))
-        else:
-            sys.stdout.write(
-                'Flashing {} of {} to {} ({}): '.format(
-                    current_file_number, total_files,
-                    TargetTypes.to_string(t_data.id), artifact.target.type))
-            sys.stdout.flush()
-
-        if len(image) > ((t_data.flash_pages - start_page) *
-                         t_data.page_size):
-            if self.progress_cb:
-                self.progress_cb('Error: Not enough space to flash the image file.', int(progress))
-            else:
-                print('Error: Not enough space to flash the image file.')
-            raise Exception('Not enough space to flash the image file')
-
-        if not self.progress_cb:
-            logger.info(('%d bytes (%d pages) ' % (
-                (len(image) - 1), int(len(image) / t_data.page_size) + 1)))
-            sys.stdout.write(('%d bytes (%d pages) ' % (
-                (len(image) - 1), int(len(image) / t_data.page_size) + 1)))
-            sys.stdout.flush()
-
-        need_pages = int((len(image) - 1) / t_data.page_size) + 1 # 需要的页数
         # For each page
         ctr = 0  # Buffer counter
-        for i in range(0, need_pages):
+        for i in range(0, int((len(image) - 1) / t_data.page_size) + 1):
             if self.terminate_flashing_cb and self.terminate_flashing_cb():
                 raise Exception('Flashing terminated')
 
@@ -468,8 +333,6 @@ class Bootloader:
                 sys.stdout.write('.')
                 sys.stdout.flush()
 
-            # self._cload.upload_buffer_process_loss(t_data.addr) # 这里来处理缺失的情况
-
             # Flash when the complete buffers are full
             if ctr >= t_data.buffer_pages:
                 if self.progress_cb:
@@ -482,10 +345,6 @@ class Bootloader:
                 else:
                     sys.stdout.write('%d' % ctr)
                     sys.stdout.flush()
-                print('ctr'+str(ctr))
-                print('start_page:'+str(start_page),end=',')
-                print('i:'+str(i),end=',')
-                print("start page:"+str(start_page + i - (ctr - 1)))
                 if not self._cload.write_flash(t_data.addr, 0,
                                                start_page + i - (ctr - 1),
                                                ctr):
@@ -512,11 +371,6 @@ class Bootloader:
             else:
                 sys.stdout.write('%d' % ctr)
                 sys.stdout.flush()
-            print('ctr'+str(ctr))
-            print('start_page:'+str(start_page),end=',')
-            print('i:'+str(i),end=',')
-            print("start page:"+str((int((len(image) - 1) / t_data.page_size)) -
-                     (ctr - 1)))
             if not self._cload.write_flash(
                     t_data.addr, 0,
                     (start_page + (int((len(image) - 1) / t_data.page_size)) -
@@ -531,10 +385,7 @@ class Bootloader:
                           ' wrong radio link?' % self._cload.error_code)
                 raise Exception()
 
-        
-
     def _get_platform_id(self):
-        print("Bootloader: _get_platform_id")
         """Get platform identifier used in the zip manifest for curr copter"""
         identifier = 'cf1'
         if (BootVersion.is_cf2(self.protocol_version)):
@@ -543,8 +394,6 @@ class Bootloader:
         return identifier
 
     def console_callback(self, text: str):
-        print("Bootloader: console_callback")
-
         '''A callback to run when we get console text from Crazyflie'''
         # We do not add newlines to the text received, we get them from the
         # Crazyflie at appropriate places.
@@ -552,7 +401,6 @@ class Bootloader:
 
     def _flash_deck_incrementally(self, artifacts: List[FlashArtifact], targets: List[Target], start_index: int,
                                   enable_console_log: Optional[bool] = False):
-        print("Bootloader: _flash_deck_incrementally")
         flash_all_targets = len(targets) == 0
         if self.progress_cb:
             self.progress_cb('Identifying deck to be updated', 0)

@@ -283,8 +283,6 @@ class Crazyradio:
         ackIn = None
         data = None
         try:
-            # print('Crazyradio self.handle:',end='')
-            # print(type(self.handle))
             self.handle.write(endpoint=1, data=dataOut, timeout=1000)
             data = self.handle.read(0x81, 64, timeout=1000)
 

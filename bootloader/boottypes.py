@@ -92,24 +92,3 @@ class Target:
         ret += '%d KBytes of flash available for firmware image.' % (
             (self.flash_pages - self.start_page) * self.page_size / 1024)
         return ret
-
-class FlashProgress():
-    def __init__(self,cpuid) -> None:
-        self.cpuid = cpuid
-        self.is_succ = 0    # 1代表成功，0代表还未赋值，-1代表失败
-        pass
-    
-    def getCpuId(self):
-        return self.cpuid
-
-    def isNotRecv(self):
-        return self.is_succ==0
-    
-    def setNotRecv(self):
-        self.is_succ = 0 
-    
-    def isFail(self):
-        return self.is_succ==-1
-
-    def isSucc(self):
-        return self.is_succ==1
