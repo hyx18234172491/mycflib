@@ -278,8 +278,6 @@ class Cloader:
         pk.set_header(0xFF, 0xFF)   # 设置port和channel
         pk.data = (target_id, CMD_GET_INFO)
         self.link.send_packet(pk)
-        
-        print(type(self.link))
 
         flag = False # 表示第几次接收到数据包
         timeout_times = 0 # 超时次数
