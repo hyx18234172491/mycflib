@@ -341,11 +341,9 @@ class Bootloader:
         ctr = 0 # 这一轮有多少页
         while (i < need_pages) :
             flag = True
-            relative_start_page = i # 暂存i的值，用于回滚
             ctr = 0
-            while flag:
+            for i in range(3):
                 ctr = 0   # j用来记录每次将多少页放到buffer中
-                i = relative_start_page   
                 while ((ctr<t_data.buffer_pages) and i < need_pages):
                     if self.terminate_flashing_cb and self.terminate_flashing_cb():
                         raise Exception('Flashing terminated')
@@ -360,9 +358,6 @@ class Bootloader:
                             image[i * t_data.page_size: (i + 1) * t_data.page_size])
                     i += 1
                     ctr += 1
-                if(self._cload.upload_buffer_query_loss(t_data.addr)==False):
-                    print("没有丢失数据包: page"+str(i))
-                    flag = False                  
 
             if self.progress_cb:
                 progress += factor

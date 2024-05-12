@@ -466,44 +466,6 @@ class Cloader:
     def upload_buffer_alt(self, target_id, page, address, buff):
         self.initFlashProgress()
         self.upload_buffer(target_id, page, address, buff)
-        # while(self.upload_buffer_query_loss(target_id)):    # 只要还有未接收到的则重新loaderbuffer
-        #     print("retry loader buffer page-"+str(page))
-        #     self.upload_buffer(target_id, page, address, buff)
-
-
-    def upload_buffer_query_loss(self,target_id):
-        '''
-        如果有丢失则返回true,没有丢失则返回false
-        '''
-        # 问一下谁有缺失
-        CMD_QUERY_IS_LOSS=0x31
-        CMD_QUERY_IS_LOSS_ACK=0x32
-        pk = CRTPPacket()
-        pk.set_header(0xFF, 0xFF)
-        pk.data = struct.pack('=BB', target_id,CMD_QUERY_IS_LOSS)
-        # 发送之前清空网络中遗留的数据包
-        pk_left = self.link.receive_packet(0)
-        while pk_left is not None:
-                    pk_left = self.link.receive_packet(0)
-        # 发送
-        self.link.send_packet(pk)
-        
-        # 如果有丢失的，则会接收到数据包
-        answer = self.link.receive_packet(0)
-        while(answer): # answer不为空
-            print("upload_buffer_query_loss 接收到数据包",end=",")
-            if (answer.header == 0xFF and struct.unpack('<BB', answer.data[0:2]) ==
-                        (target_id, CMD_QUERY_IS_LOSS_ACK)):
-                print("确定已经丢包")
-                # 清理掉其他的pk
-                pk_left = self.link.receive_packet(0)
-                while pk_left is not None:
-                    pk_left = self.link.receive_packet(0)
-                return True # 有丢失的返回True
-            else:   # 虽然不为空，但是不是我想要的，则重新收集
-                print("但是没有丢包")
-                answer = self.link.receive_packet(2)
-        return False
         
 
     def read_flash(self, addr=0xFF, page=0x00):
