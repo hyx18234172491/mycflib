@@ -431,29 +431,30 @@ class Cloader:
                     page += m[(2 * i) + 1]
 
     def upload_buffer(self, target_id, page, address, buff):
-        # address是对页中的内容进行编号
-        print("Cloader: upload_buffer "+str(target_id))
-        """Upload data into a buffer on the Crazyflie"""
-        # print len(buff)
-        count = 0
-        pk = CRTPPacket()
-        pk.set_header(0xFF, 0xFF)
-        pk.data = struct.pack('=BBHH', target_id, 0x14, page, address)
+        for _ in range(3):
+            # address是对页中的内容进行编号
+            print("Cloader: upload_buffer " + str(target_id))
+            """Upload data into a buffer on the Crazyflie"""
+            # print len(buff)
+            count = 0
+            pk = CRTPPacket()
+            pk.set_header(0xFF, 0xFF)
+            pk.data = struct.pack('=BBHH', target_id, 0x14, page, address)
 
-        for i in range(0, len(buff)):
-            pk.data.append(buff[i])
+            for i in range(0, len(buff)):
+                pk.data.append(buff[i])
 
-            count += 1
+                count += 1
 
-            if count > 24:
-                self.link.send_packet(pk)
-                count = 0
-                pk = CRTPPacket()
-                pk.set_header(0xFF, 0xFF)
-                pk.data = struct.pack('=BBHH', target_id, 0x14, page,
-                                      i + address + 1)
+                if count > 24:
+                    self.link.send_packet(pk)
+                    count = 0
+                    pk = CRTPPacket()
+                    pk.set_header(0xFF, 0xFF)
+                    pk.data = struct.pack('=BBHH', target_id, 0x14, page,
+                                          i + address + 1)
 
-        self.link.send_packet(pk)
+            self.link.send_packet(pk)
     
     def initFlashProgress(self):
         '''

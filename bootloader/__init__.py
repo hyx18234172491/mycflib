@@ -273,7 +273,7 @@ class Bootloader:
 
         for (i, artifact) in enumerate(artifacts):
             print("flash block number:"+str(i)) # 这里打印得到其实只执行一次
-            self._internal_flash(artifact, i + 1, len(artifacts))
+            self._internal_flash_alt(artifact, i + 1, len(artifacts))
 
     def reset_to_firmware(self) -> bool:
         print("Bootloader: reset_to_firmware")
