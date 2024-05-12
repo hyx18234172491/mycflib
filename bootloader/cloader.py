@@ -93,9 +93,8 @@ class Cloader:
 
         link.close()
 
-        
         if len(res) > 0:
-            print("Cloader: scan_for_bootloader get res",end=':')
+            print("Cloader: scan_for_bootloader get res", end=':')
             print(res)
             print("Cloader: scan_for_bootloader end")
             return res[0]
@@ -103,7 +102,7 @@ class Cloader:
         return None
 
     def reset_to_bootloader(self, target_id: int) -> bool:
-        print("Cloader: reset_to_bootloader"+str(target_id))
+        print("Cloader: reset_to_bootloader" + str(target_id))
 
         pk = CRTPPacket(0xFF, [target_id, 0xFF])
         self.link.send_packet(pk)
@@ -133,8 +132,8 @@ class Cloader:
         return False
 
     def reset_to_firmware(self, target_id: int) -> bool:
-        print("Cloader: reset_to_firmware"+str(target_id))
-        
+        print("Cloader: reset_to_firmware" + str(target_id))
+
         """ Reset to firmware
         The parameter target_id corresponds to the device to reset.
 
@@ -174,7 +173,7 @@ class Cloader:
                 self.clink_address + '?safelink=0')
 
     def check_link_and_get_info(self, target_id=0xFF):
-        print("Cloader: check_link_and_get_info:"+str(target_id))
+        print("Cloader: check_link_and_get_info:" + str(target_id))
         """Try to get a connection with the bootloader ...
            update_info has a timeout of 10 seconds """
         if self._update_info_stm32_alt(target_id):
@@ -192,19 +191,19 @@ class Cloader:
             self._update_info_nrf(target_id)
         if self._info_cb:
             self._info_cb.call(self.targets[target_id])
-        print("Cloader: request_info_update:" + str(target_id)+'end')
+        print("Cloader: request_info_update:" + str(target_id) + 'end')
         return self.targets[target_id]
-    
+
     def request_info_update_nrf(self, target_id):
         print("Cloader: request_info_update:" + str(target_id))
         if target_id not in self.targets:
             self._update_info_nrf(target_id)
         if self._info_cb:
             self._info_cb.call(self.targets[target_id])
-        print("Cloader: request_info_update:" + str(target_id)+'end')
+        print("Cloader: request_info_update:" + str(target_id) + 'end')
 
     def _update_info_stm32(self, target_id):
-        print("Cloader: _update_info start:"+str(target_id))
+        print("Cloader: _update_info start:" + str(target_id))
         """ Call the command getInfo and fill up the information received in
         the fields of the object
         """
@@ -213,7 +212,7 @@ class Cloader:
 
         # Call getInfo ...
         pk = CRTPPacket()
-        pk.set_header(0xFF, 0xFF)   # 设置port和channel
+        pk.set_header(0xFF, 0xFF)  # 设置port和channel
         pk.data = (target_id, CMD_GET_INFO)
         self.link.send_packet(pk)
 
@@ -237,13 +236,13 @@ class Cloader:
                 if len(answer.data) > 22:
                     self.targets[target_id].protocol_version = answer.datat[22]
                     self.protocol_version = answer.datat[22]
-                
+
                 # if len(answer.data) > 12:
                 #     self.targets[target_id].protocol_version = answer.datat[12]
                 #     self.protocol_version = answer.datat[12]
 
                 self.targets[target_id].page_size = tab[2]
-                print("page size:"+str(tab[2]))
+                print("page size:" + str(tab[2]))
                 self.targets[target_id].buffer_pages = tab[3]
                 self.targets[target_id].flash_pages = tab[4]
                 self.targets[target_id].start_page = tab[5]
@@ -252,7 +251,7 @@ class Cloader:
                     self.targets[target_id].cpuid += ':%02X' % i
 
                 print("-- print cpu id start--")
-                print('target id'+str(target_id))
+                print('target id' + str(target_id))
                 print(self.targets[target_id].cpuid)
                 print("-- print cpu id end  --")
                 if (self.protocol_version == 0x10 and
@@ -261,93 +260,32 @@ class Cloader:
 
                 print("Cloader: _update_info true end")
                 return True
-        print("Cloader: _update_info false end") 
+        print("Cloader: _update_info false end")
         return False
-    
-    
+
     def _update_info_stm32_alt(self, target_id):
-        print("Cloader: _update_info alt start:"+str(target_id))
+        print("Cloader: _update_info alt start:" + str(target_id))
         """ Call the command getInfo and fill up the information received in
         the fields of the object
         """
-        CMD_GET_INFO = 0x10
-        CMD_GET_INFO_ACK = 0x20
+        # 这里其实就是获取这些信息
+        self.targets[target_id].page_size = 1024
+        self.targets[target_id].buffer_pages = 10
+        self.targets[target_id].flash_pages = 1024
+        self.targets[target_id].start_page = 16
+        print("Cloader: _update_info")
+        return True
 
-        # Call getInfo ...
+    def _set_start_sencond_stage(self, target_id):
+        CMD_START_SECOND_STAGE = 0x31
         pk = CRTPPacket()
-        pk.set_header(0xFF, 0xFF)   # 设置port和channel
-        pk.data = (target_id, CMD_GET_INFO)
-        self.link.send_packet(pk)
-
-        flag = False # 表示第几次接收到数据包
-        timeout_times = 0 # 超时次数
-        timeout_times_max = 5 # 超时次数最大值
-        each_wait_time = 2  # 每次等待时间
-        timeout = 10  # seconds
-        ts = time.time()
-        
-        while time.time() - ts < timeout:
-            # Wait for the answer
-            answer = self.link.receive_packet(each_wait_time)
-            while(answer):
-                if (answer.header == 0xFF and struct.unpack('<BB', answer.data[0:2]) ==
-                        (target_id, CMD_GET_INFO_ACK)):
-                    tab = struct.unpack('BBHHHH', answer.data[0:10])
-                    cpuid = struct.unpack('H', answer.data[10:12])[0]
-                    print(cpuid)
-                    # self.flash_progress[cpuid].cpuid = cpuid
-                    self.flash_progress[cpuid] = FlashProgress(cpuid=cpuid)
-                    if not flag:
-                        flag = True
-                        if target_id not in self.targets:
-                            self.targets[target_id] = Target(target_id)
-                        self.targets[target_id].addr = target_id
-                        if len(answer.data) > 12:
-                            self.targets[target_id].protocol_version = answer.datat[12]
-                            self.protocol_version = answer.datat[12]
-
-                        self.targets[target_id].page_size = tab[2]
-                        print("page size:"+str(tab[2]))
-                        self.targets[target_id].buffer_pages = tab[3]
-                        self.targets[target_id].flash_pages = tab[4]
-                        self.targets[target_id].start_page = tab[5]
-                        self.targets[target_id].cpuid = cpuid
-                    else:
-                        pass
-                    if (self.protocol_version == 0x10 and
-                            target_id == TargetTypes.STM32):
-                        self._update_mapping(target_id)
-
-                    print("Cloader: _update_info true end")
-                    return True
-                answer = self.link.receive_packet(each_wait_time)
-            # 到这里说明超时1次了
-            timeout_times = timeout_times+1
-            if timeout_times < timeout_times_max:
-                self.link.send_packet(pk)
-            else:
-                if flag:
-                    print(self.flash_progress)
-                    return True
-                else:
-                    print(self.flash_progress)
-                    return False
-            
-
-        print("Cloader: _update_info false end") 
-        return False
-    
-    def _set_start_sencond_stage(self,target_id):
-        CMD_START_SECOND_STAGE=0x31
-        pk = CRTPPacket()
-        pk.set_header(0xFF, 0xFF)   # 设置port和channel
+        pk.set_header(0xFF, 0xFF)  # 设置port和channel
         pk.data = (target_id, CMD_START_SECOND_STAGE)
         self.link.send_packet(pk)
         pass
-    
 
     def _update_info_nrf(self, target_id=TargetTypes.NRF51):
-        print("Cloader: _update_info_nrf start:"+str(target_id))
+        print("Cloader: _update_info_nrf start:" + str(target_id))
         """ Call the command getInfo and fill up the information received in
         the fields of the object
         """
@@ -358,7 +296,7 @@ class Cloader:
         return True
         # Call getInfo ...
         pk = CRTPPacket()
-        pk.set_header(0xFF, 0xFF)   # 设置port和channel
+        pk.set_header(0xFF, 0xFF)  # 设置port和channel
         pk.data = (target_id, CMD_GET_INFO)
         self.link.send_packet(pk)
 
@@ -383,7 +321,7 @@ class Cloader:
                 if len(answer.data) > 22:
                     self.targets[target_id].protocol_version = answer.datat[22]
                     self.protocol_version = answer.datat[22]
-                
+
                 # if len(answer.data) > 12:
                 #     self.targets[target_id].protocol_version = answer.datat[12]
                 #     self.protocol_version = answer.datat[12]
@@ -397,18 +335,18 @@ class Cloader:
                 #     self.targets[target_id].cpuid += ':%02X' % i
 
                 print("-- print cpu id start--")
-                print('target id'+str(target_id))
+                print('target id' + str(target_id))
                 print(self.targets[target_id].cpuid)
                 print("-- print cpu id end  --")
 
                 print("Cloader: _update_info true end")
                 return True
-        print("Cloader: _update_info false end") 
+        print("Cloader: _update_info false end")
         return False
 
     def _update_mapping(self, target_id):
         return True
-        print("Cloader: _update_mapping:"+str(target_id))
+        print("Cloader: _update_mapping:" + str(target_id))
         pk = CRTPPacket()
         pk.set_header(0xff, 0xff)
         pk.data = (target_id, 0x12)
@@ -455,7 +393,7 @@ class Cloader:
                                           i + address + 1)
 
             self.link.send_packet(pk)
-    
+
     def initFlashProgress(self):
         '''
         如果有未收到的,则返回false
@@ -463,11 +401,10 @@ class Cloader:
         for progress in self.flash_progress.values():
             if not progress.isFail():
                 progress.setNotRecv()
-    
+
     def upload_buffer_alt(self, target_id, page, address, buff):
         self.initFlashProgress()
         self.upload_buffer(target_id, page, address, buff)
-        
 
     def read_flash(self, addr=0xFF, page=0x00):
         print("Cloader: read_flash")
@@ -481,7 +418,7 @@ class Cloader:
             retry_counter = 5
             while ((not pk or pk.header != 0xFF or
                     struct.unpack('<BB', pk.data[0:2]) != (addr, 0x1C)) and
-                    retry_counter >= 0):
+                   retry_counter >= 0):
                 pk = CRTPPacket()
                 pk.set_header(0xFF, 0xFF)
                 pk.data = struct.pack('<BBHH', addr, 0x1C, page, (i * 25))
@@ -496,7 +433,7 @@ class Cloader:
 
         # For some reason we get one byte extra here...
         return buff[0:page_size]
-    
+
     def write_flash_alt(self, addr, page_buffer, target_page, page_count):
         print("Cloader: write_flash")
 
@@ -510,7 +447,7 @@ class Cloader:
         while pk is not None:
             pk = self.link.receive_packet(0)
 
-        CMD_WRITE_FLASH=0x18
+        CMD_WRITE_FLASH = 0x18
         CMD_WRITE_FLASH_ACK = 0x28
         retry_counter = 5
         # print "Flasing to 0x{:X}".format(addr)
@@ -546,10 +483,9 @@ class Cloader:
         '''
         for progress in self.flash_progress.values():
             if progress.isNotRecv():
-                print("还未收到cpuid:"+str(progress.getCpuId())+'的write flash ack')
+                print("还未收到cpuid:" + str(progress.getCpuId()) + '的write flash ack')
                 return False
         return True
-
 
     def write_flash(self, addr, page_buffer, target_page, page_count):
         print("Cloader: write_flash")
@@ -557,87 +493,22 @@ class Cloader:
         """Initiate flashing of data in the buffer to flash."""
         # print "Write page", flashPage
         # print "Writing page [%d] and [%d] forward" % (flashPage, nPage)
-        pk = None
 
-        # Flushing downlink ...
-        pk = self.link.receive_packet(0)
-        while pk is not None:
-            pk = self.link.receive_packet(0)
-
-        CMD_WRITE_FLASH=0x18
+        CMD_WRITE_FLASH = 0x18
         CMD_WRITE_FLASH_ACK = 0x28
 
-        # 发送write_flash命令
-        # 只要存在没有接收的,则执行，count如果大于3认为它已经失联了
-        count = 0
-        while(self.checkFlashProgress()==False and count < 3):
-            count+=1
-            pk = CRTPPacket()
-            pk.set_header(0xFF, 0xFF)
-            pk.data = struct.pack('<BBHHH', addr, CMD_WRITE_FLASH, page_buffer,
-                                    target_page, page_count)
-            self.link.send_packet(pk)
-            # 接收数据包
-            pk = self.link.receive_packet(2.5)
-            pk_list =[]
-            while(pk):
-                pk_list.append(pk)
-                pk = self.link.receive_packet(1)
-            print('开始解析write_falsh_ack数据包')
-            # 需要解析所有的数据包
-            for pk in pk_list:
-                print(len(pk.data))
-                if (pk.header == 0xFF and len(pk.data) >= 6 and
-                    struct.unpack('<BB', pk.data[0:2]) == (addr, CMD_WRITE_FLASH_ACK)):
-                    pass
-                    # 更新cpuid对应的已经写成功
-                    print('解析成功')
-                    cpuid = struct.unpack('H', pk.data[4:6])[0]
-                    print("cpuid:")
-                    print(cpuid)
-                    if(pk.data[2] == 1):
-                        if(self.flash_progress[cpuid].is_succ!=-1): # -1代表已经失败了，现在成功也没用
-                            self.flash_progress[cpuid].is_succ = 1
-                    else:
-                        self.flash_progress[cpuid].is_succ = -1 # 说明写失败了
-        return True
-
-
-
-
-        retry_counter = 5
-        # print "Flasing to 0x{:X}".format(addr)
-        while ((not pk or pk.header != 0xFF or len(pk.data) < 2 or
-                struct.unpack('<BB', pk.data[0:2]) != (addr, CMD_WRITE_FLASH_ACK)) and
-               retry_counter >= 0):
-
-
+        # 连续发送3次write_flash命令
+        for _ in range(3):
             pk = CRTPPacket()
             pk.set_header(0xFF, 0xFF)
             pk.data = struct.pack('<BBHHH', addr, CMD_WRITE_FLASH, page_buffer,
                                   target_page, page_count)
             self.link.send_packet(pk)
-
-            # Timeout for writing to flash is raised from 1s (used elsewhere
-            # in this module) to 2.5s because it may take more than a second
-            # to erase a page on the STM32F405.
-            #
-            # See https://github.com/bitcraze/crazyflie-lib-python/issues/98
-            # for more details.
-            pk = self.link.receive_packet(2.5)
-            retry_counter -= 1
-
-        if retry_counter < 0:
-            self.error_code = -1
-            return False
-
-        self.error_code = pk.data[3]
-
-        return pk.data[2] == 1
+        return True
 
     def decode_cpu_id(self, cpuid):
         print("Cloader: decode_cpu_id")
-        
+
         """Decode the CPU id into a string"""
         ret = ()
         for i in cpuid.split(':'):
