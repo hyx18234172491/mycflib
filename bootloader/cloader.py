@@ -253,25 +253,26 @@ class Cloader:
     def upload_buffer(self, target_id, page, address, buff):
         """Upload data into a buffer on the Crazyflie"""
         # print len(buff)
-        count = 0
-        pk = CRTPPacket()
-        pk.set_header(0xFF, 0xFF)
-        pk.data = struct.pack('=BBHH', target_id, 0x14, page, address)
+        for _ in range(3):
+            count = 0
+            pk = CRTPPacket()
+            pk.set_header(0xFF, 0xFF)
+            pk.data = struct.pack('=BBHH', target_id, 0x14, page, address)
 
-        for i in range(0, len(buff)):
-            pk.data.append(buff[i])
+            for i in range(0, len(buff)):
+                pk.data.append(buff[i])
 
-            count += 1
+                count += 1
 
-            if count > 24:  # 每次传输24个
-                self.link.send_packet(pk)   
-                count = 0
-                pk = CRTPPacket()
-                pk.set_header(0xFF, 0xFF)
-                pk.data = struct.pack('=BBHH', target_id, 0x14, page,
-                                      i + address + 1)
+                if count > 24:  # 每次传输24个
+                    self.link.send_packet(pk)
+                    count = 0
+                    pk = CRTPPacket()
+                    pk.set_header(0xFF, 0xFF)
+                    pk.data = struct.pack('=BBHH', target_id, 0x14, page,
+                                          i + address + 1)
 
-        self.link.send_packet(pk)
+            self.link.send_packet(pk)
 
     def read_flash(self, addr=0xFF, page=0x00):
         """Read back a flash page from the Crazyflie and return it"""
