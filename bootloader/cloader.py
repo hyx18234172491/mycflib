@@ -269,6 +269,7 @@ class Cloader:
         the fields of the object
         """
         # 这里其实就是获取这些信息
+        self.targets[target_id] = Target(target_id)
         self.targets[target_id].page_size = 1024
         self.targets[target_id].buffer_pages = 10
         self.targets[target_id].flash_pages = 1024
