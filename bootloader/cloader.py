@@ -178,6 +178,16 @@ class Cloader:
         the fields of the object
         """
 
+        self.targets[target_id] = Target(target_id)
+        self.targets[target_id].addr = target_id
+        self.targets[target_id].page_size = 1024
+        self.targets[target_id].buffer_pages = 10
+        self.targets[target_id].flash_pages = 1024
+        self.targets[target_id].start_page = 16
+        self.protocol_version = 0x10;
+        print("Cloader: _update_info")
+        return True
+
         # Call getInfo ...
         pk = CRTPPacket()
         pk.set_header(0xFF, 0xFF)
