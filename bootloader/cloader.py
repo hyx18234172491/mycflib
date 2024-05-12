@@ -124,8 +124,9 @@ class Cloader:
 
         Return True if the reset has been done, False on timeout
         """
-        pk = CRTPPacket(0xFF, [target_id, 0xFF])
-        self.link.send_packet(pk)
+        for _ in range(3):
+            pk = CRTPPacket(0xFF, [target_id, 0xFF])
+            self.link.send_packet(pk)
 
         timeout = 5  # seconds
         ts = time.time()
@@ -305,6 +306,16 @@ class Cloader:
         """Initiate flashing of data in the buffer to flash."""
         # print "Write page", flashPage
         # print "Writing page [%d] and [%d] forward" % (flashPage, nPage)
+        for _ in range(3):
+            pk = CRTPPacket()
+            pk.set_header(0xFF, 0xFF)
+            pk.data = struct.pack('<BBHHH', addr, 0x18, page_buffer,
+                                  target_page, page_count)
+            self.link.send_packet(pk)
+            time.sleep(0.5)
+        return True
+        print(f'{page_buffer},{target_page},{page_count}')
+
         pk = None
 
         # Flushing downlink ...
@@ -314,6 +325,7 @@ class Cloader:
 
         retry_counter = 5
         # print "Flasing to 0x{:X}".format(addr)
+        # print('------------------')
         while ((not pk or pk.header != 0xFF or len(pk.data) < 2 or
                 struct.unpack('<BB', pk.data[0:2]) != (addr, 0x18)) and
                retry_counter >= 0):
@@ -329,6 +341,7 @@ class Cloader:
             #
             # See https://github.com/bitcraze/crazyflie-lib-python/issues/98
             # for more details.
+            # print('1')
             pk = self.link.receive_packet(2.5)
             retry_counter -= 1
 
@@ -336,7 +349,6 @@ class Cloader:
             self.error_code = -1
             return False
 
-        self.error_code = pk.data[3]
 
         return pk.data[2] == 1
 

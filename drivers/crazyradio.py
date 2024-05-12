@@ -156,6 +156,7 @@ class Crazyradio:
             self.set_arc(3)
             self.set_ard_bytes(32)
             self.set_ack_enable(True)
+            # self.set_ack_enable(False)
 
     def _log_packet(self, receive, devid, address, channel, packet):
         try:
