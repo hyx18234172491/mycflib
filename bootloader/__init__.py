@@ -58,7 +58,7 @@ FlashArtifact = namedtuple('FlashArtifact', ['content', 'target'])
 class Bootloader:
     """Bootloader utility for the Crazyflie"""
 
-    def __init__(self, clink=None):
+    def __init__(self, clink=None,swarm_flash = False):
         """Init the communication class by starting to communicate with the
         link given. clink is the link address used after resetting to the
         bootloader.
@@ -66,6 +66,7 @@ class Bootloader:
         The device is actually considered in firmware mode.
         """
         self.clink = clink
+        self.swarm_flash = swarm_flash
         self.in_loader = False
 
         self.page_size = 0

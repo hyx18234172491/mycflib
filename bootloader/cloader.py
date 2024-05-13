@@ -62,7 +62,7 @@ class Cloader:
         self.start_page = 0
         self.cpuid = 'N/A'
         self.error_code = 0
-        self.protocol_version = 0xFF    # 定义协议版本
+        self.protocol_version = 0xFF  # 定义协议版本
 
         self._info_cb = info_cb
         self._in_boot_cb = in_boot_cb
@@ -82,27 +82,27 @@ class Cloader:
         ts = time.time()
         res = ()
         while len(res) == 0 and (time.time() - ts) < 10:
-            res = link.scan_selected(self._available_boot_uri) # 扫描选择的？？？
+            res = link.scan_selected(self._available_boot_uri)  # 扫描选择的？？？
 
         link.close()
 
         if len(res) > 0:
-            return res[0]   # 这里给会给出第0个
+            return res[0]  # 这里给会给出第0个
         return None
 
     def reset_to_bootloader(self, target_id: int) -> bool:
         pk = CRTPPacket(0xFF, [target_id, 0xFF])
-        self.link.send_packet(pk)   # 发送数据包
+        self.link.send_packet(pk)  # 发送数据包
         address = None
 
         timeout = 5  # seconds
         ts = time.time()
         while time.time() - ts < timeout:
-            pk = self.link.receive_packet(2)    # 应该是等待2s？
+            pk = self.link.receive_packet(2)  # 应该是等待2s？
             if pk is None:
                 continue
             if pk.port == 15 and pk.channel == 3 and len(pk.data) > 3:
-                if struct.unpack('<BB', pk.data[0:2]) != (target_id, 0xFF): # 对收到的数据包做判断
+                if struct.unpack('<BB', pk.data[0:2]) != (target_id, 0xFF):  # 对收到的数据包做判断
                     continue
 
                 address = 'B1' + binascii.hexlify(pk.data[2:6][::-1]).upper().decode('utf8')
@@ -148,7 +148,7 @@ class Cloader:
 
     def open_bootloader_uri(self, uri=None):
         if self.link:
-            self.link.close()   # 如果有的话，则关闭
+            self.link.close()  # 如果有的话，则关闭
         if uri:
             self.link = cflib.crtp.get_link_driver(uri + '?safelink=0')
         else:
@@ -159,7 +159,7 @@ class Cloader:
         """Try to get a connection with the bootloader ...
            update_info has a timeout of 10 seconds """
         if self._update_info(target_id):
-            if self._in_boot_cb:    # 下面执行了回调函数
+            if self._in_boot_cb:  # 下面执行了回调函数
                 self._in_boot_cb.call(True, self.targets[
                     target_id].protocol_version)
             if self._info_cb:
@@ -251,10 +251,13 @@ class Cloader:
                     self.mapping.append(page)
                     page += m[(2 * i) + 1]
 
-    def upload_buffer(self, target_id, page, address, buff):
+    def upload_buffer(self, target_id, page, address, buff, swarm_flash=False):
         """Upload data into a buffer on the Crazyflie"""
         # print len(buff)
-        for _ in range(3):
+        run_times = 3
+        if swarm_flash:
+            run_times = 3
+        for _ in range(run_times):
             count = 0
             pk = CRTPPacket()
             pk.set_header(0xFF, 0xFF)
@@ -283,10 +286,10 @@ class Cloader:
 
         for i in range(0, int(math.ceil(page_size / 25.0))):
             pk = None
-            retry_counter = 5   # 重试次数
+            retry_counter = 5  # 重试次数
             while ((not pk or pk.header != 0xFF or
                     struct.unpack('<BB', pk.data[0:2]) != (addr, 0x1C)) and
-                    retry_counter >= 0):
+                   retry_counter >= 0):
                 pk = CRTPPacket()
                 pk.set_header(0xFF, 0xFF)
                 pk.data = struct.pack('<BBHH', addr, 0x1C, page, (i * 25))
@@ -302,7 +305,7 @@ class Cloader:
         # For some reason we get one byte extra here...
         return buff[0:page_size]
 
-    def write_flash(self, addr, page_buffer, target_page, page_count):
+    def write_flash(self, addr, page_buffer, target_page, page_count, swarm_flash=False):
         """Initiate flashing of data in the buffer to flash."""
         # print "Write page", flashPage
         # print "Writing page [%d] and [%d] forward" % (flashPage, nPage)
@@ -314,7 +317,7 @@ class Cloader:
             self.link.send_packet(pk)
             time.sleep(0.3)
         return True
-        print(f'{page_buffer},{target_page},{page_count}')
+        # print(f'{page_buffer},{target_page},{page_count}')
 
         pk = None
 
@@ -348,7 +351,6 @@ class Cloader:
         if retry_counter < 0:
             self.error_code = -1
             return False
-
 
         return pk.data[2] == 1
 
