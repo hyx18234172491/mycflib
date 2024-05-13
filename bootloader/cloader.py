@@ -312,7 +312,7 @@ class Cloader:
             pk.data = struct.pack('<BBHHH', addr, 0x18, page_buffer,
                                   target_page, page_count)
             self.link.send_packet(pk)
-            time.sleep(0.5)
+            time.sleep(0.3)
         return True
         print(f'{page_buffer},{target_page},{page_count}')
 
