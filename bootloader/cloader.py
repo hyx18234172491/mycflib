@@ -254,14 +254,18 @@ class Cloader:
     def upload_buffer(self, target_id, page, address, buff, swarm_flash=False):
         """Upload data into a buffer on the Crazyflie"""
         # print len(buff)
-        run_times = 3
+        CMD_LOAD_BUFFER = 0x14
+        CMD_LOAD_BUFFER_SWARM = 0x51
+        run_times = 1
+        CMD = CMD_LOAD_BUFFER
         if swarm_flash:
             run_times = 3
+            CMD = CMD_LOAD_BUFFER_SWARM
         for _ in range(run_times):
             count = 0
             pk = CRTPPacket()
             pk.set_header(0xFF, 0xFF)
-            pk.data = struct.pack('=BBHH', target_id, 0x14, page, address)
+            pk.data = struct.pack('=BBHH', target_id, CMD, page, address)
 
             for i in range(0, len(buff)):
                 pk.data.append(buff[i])
@@ -273,7 +277,7 @@ class Cloader:
                     count = 0
                     pk = CRTPPacket()
                     pk.set_header(0xFF, 0xFF)
-                    pk.data = struct.pack('=BBHH', target_id, 0x14, page,
+                    pk.data = struct.pack('=BBHH', target_id, CMD, page,
                                           i + address + 1)
 
             self.link.send_packet(pk)
@@ -309,16 +313,18 @@ class Cloader:
         """Initiate flashing of data in the buffer to flash."""
         # print "Write page", flashPage
         # print "Writing page [%d] and [%d] forward" % (flashPage, nPage)
-        for _ in range(3):
-            pk = CRTPPacket()
-            pk.set_header(0xFF, 0xFF)
-            pk.data = struct.pack('<BBHHH', addr, 0x18, page_buffer,
-                                  target_page, page_count)
-            self.link.send_packet(pk)
-            time.sleep(0.3)
-        return True
+        CMD_WRITE_FLASH_SWARM = 0x52
+        if (swarm_flash):
+            for _ in range(3):
+                pk = CRTPPacket()
+                pk.set_header(0xFF, 0xFF)
+                pk.data = struct.pack('<BBHHH', addr, CMD_WRITE_FLASH_SWARM, page_buffer,
+                                      target_page, page_count)
+                self.link.send_packet(pk)
+                time.sleep(0.3)
+            return True
         # print(f'{page_buffer},{target_page},{page_count}')
-
+        CMD_WRITE_FLASH = 0x18
         pk = None
 
         # Flushing downlink ...
@@ -334,7 +340,7 @@ class Cloader:
                retry_counter >= 0):
             pk = CRTPPacket()
             pk.set_header(0xFF, 0xFF)
-            pk.data = struct.pack('<BBHHH', addr, 0x18, page_buffer,
+            pk.data = struct.pack('<BBHHH', addr, CMD_WRITE_FLASH, page_buffer,
                                   target_page, page_count)
             self.link.send_packet(pk)
 
