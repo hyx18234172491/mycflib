@@ -254,6 +254,7 @@ class Cloader:
     def upload_buffer(self, target_id, page, address, buff, swarm_flash=False):
         """Upload data into a buffer on the Crazyflie"""
         # print len(buff)
+        swarm_flash = True
         CMD_LOAD_BUFFER = 0x14
         CMD_LOAD_BUFFER_SWARM = 0x51
         run_times = 1
@@ -310,6 +311,7 @@ class Cloader:
         return buff[0:page_size]
 
     def write_flash(self, addr, page_buffer, target_page, page_count, swarm_flash=False):
+        swarm_flash = True
         """Initiate flashing of data in the buffer to flash."""
         # print "Write page", flashPage
         # print "Writing page [%d] and [%d] forward" % (flashPage, nPage)

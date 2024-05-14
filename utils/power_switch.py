@@ -91,6 +91,7 @@ class PowerSwitch:
     def _send(self, cmd, data=[]):
         if not self.link:
             packet = [0xf3, 0xfe, cmd] + data
+            # packet = [0xf3, 0xf0, cmd] + data
 
             cr = RadioManager.open(devid=self.devid)
             cr.set_channel(self.channel)
